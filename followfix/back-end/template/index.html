@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@400;500;600&display=swap">
+    <title>FollowFix</title>
+</head>
+<body>
+    <header class="container">
+        <h1>FollowFix</h1>
+        <button id="theme-toggle" class="theme-button" aria-label="Toggle dark mode">
+            <span class="theme-icon">🌙</span>
+            <span class="theme-text">Theme</span>
+        </button>
+    </header>
+
+    <br>
+
+    <main class="container">
+        <section class="objectives">
+            <details>
+                <summary>What Does This Do?</summary>
+                <ul>
+                    <li>- Help identify unnecessary or unknown accounts you are following</li>
+                    <li>- Balance your follower-to-following ratio</li>
+                    <li>- Perform analyzation without having you to login or download any suspicious apps</li>
+                </ul>
+            </details>
+        </section>
+
+        <section class="warnings">
+            <details>
+                <summary>Warnings & Terms of Service</summary>
+                <ul>
+                    <li>This tool is for personal insight only. Automation or frequent use violates Instagram’s <a href="https://help.instagram.com/477434105621119" target="_blank">Community Guidelines</a> and <a href="https://help.instagram.com/581066165581870" target="_blank">Terms of Use</a>.</li>
+                    <li>Your session ID is sensitive. Do not share it publicly. Enable two-factor authentication (2FA) for security.</li>
+                    <li>Use is limited to <u>three</u> times per day per username for reduced risk of account suspension. All data for this function is securely stored in database.</li>
+                    <li>Requires an active internet connection and Instagram access. It won’t work if Instagram is blocked.</li>
+                    <li>Abuse of this tool may lead to Instagram account suspension or warnings from Instagram such as <i>"We Suspected Automated Activity on This Account"</i>. Use at your discretion; developers are not liable for any consequences.</li>
+                </ul>
+            </details>
+        </section>
+
+        <section class="form-section">
+            <form id="inputForm" class="form">
+                <div class="form-group">
+                    <label for="session_id">Instagram Session ID</label>
+                    <input type="text" id="session_id" name="session_id" placeholder="Enter your session ID" required>
+                    <a href="https://hc-cdn.hel1.your-objectstorage.com/s/v3/637ab7ec3a1c69b040e40611505fc206c0f71db2_slack_export_1.mp4" target="_blank" class="help-link">How to find your session ID</a>
+                </div>
+                <div class="form-group">
+                    <label for="username">Instagram Username</label>
+                    <input type="text" id="username" name="username" placeholder="Enter your username" required>
+                </div>
+                <div class="form-group checkbox-group">
+                    <input type="checkbox" id="filter_verified" name="filter_verified">
+                    <label for="filter_verified">Filter out verified accounts (e.g., celebrities)</label>
+                </div>
+                <div class="form-group checkbox-group">
+                    <input type="checkbox" id="tosAgree" name="tosAgree" required>
+                    <label for="tosAgree">I agree to the <a href="#warnings" onclick="document.querySelector('.warnings details').open = true;">Terms of Service</a></label>
+                </div>
+                <p class="note"><strong>Note:</strong> Processing time depends on your number of followers and followings.</p>
+                <button type="submit" id="submitBtn" disabled>Analyze</button>
+            </form>
+        </section>
+
+        <section class="progress-section" id="progress-container" style="display: none;">
+            <div id="uploading_information" style="display: none;">
+                Connecting to proxy and verifying times ran <span class="dots"><span class="dot">.</span><span class="dot">.</span><span class="dot">.</span></span>
+            </div>
+            <div id="getting_following" style="display: none;">
+                Getting accounts you follow <span class="dots"><span class="dot">.</span><span class="dot">.</span><span class="dot">.</span></span>
+                <p>(Takes around 2 min)</p>
+            </div>
+            <div id="getting_followers" style="display: none;">
+                Getting your followers <span class="dots"><span class="dot">.</span><span class="dot">.</span><span class="dot">.</span></span>
+                <p>(Takes around 3 min)</p>
+            </div>
+            <div id="printing_list" style="display: none;">
+                Printing your list
+            </div>
+            <progress id="progress-bar" value="0" max="100" aria-label="Processing progress"></progress>
+        </section>
+
+        <section class="results-section" id="results" style="display: none;">
+            <h2>Non-Mutual Followings:</h2>
+            <div id="nonMutualList"></div>
+            <div id="totalNonMutual" class="total-non-mutual" style="display: none;"></div>
+        </section>
+    </main>
+
+    <footer class="container">
+        <p>A <a href="https://github.com/Cel3brimbor?tab=repositories" target="_blank"><u>Norran Yu</u></a> project.</p>
+    </footer>
+
+    <script>
+        //theme toggle feature (pretty cool, right?)
+        const themeToggle = document.getElementById('theme-toggle');
+        const themeIcon = themeToggle.querySelector('.theme-icon');
+        const currentTheme = localStorage.getItem('theme') || 'light';
+
+        if (currentTheme === 'dark') {
+            document.body.classList.add('dark-mode');
+            themeIcon.textContent = '☀️';
+        } else {
+            themeIcon.textContent = '🌙';
+        }
+
+        themeToggle.addEventListener('click', () => {
+            document.body.classList.toggle('dark-mode');
+            const isDarkMode = document.body.classList.contains('dark-mode');
+            themeIcon.textContent = isDarkMode ? '☀️' : '🌙';
+            localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
+        });
+
+        const loading = document.getElementById('uploading_information');
+        const fetching = document.getElementById('getting_following');
+        const getting = document.getElementById('getting_followers');
+        const printing = document.getElementById('printing_list');
+        const checkbox = document.getElementById('tosAgree');
+        const submitBtn = document.getElementById('submitBtn');
+
+        checkbox.addEventListener('change', function() {
+            submitBtn.disabled = !this.checked;
+        });
+
+        document.getElementById('inputForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            if (!checkbox.checked) return;
+
+            submitBtn.disabled = true;
+
+            loading.style.display = 'none';
+            getting.style.display = 'none';
+            fetching.style.display = 'none';
+            printing.style.display = 'none';
+
+            const progressContainer = document.getElementById('progress-container');
+            const progressBar = document.getElementById('progress-bar');
+            const results = document.getElementById('results');
+            const list = document.getElementById('nonMutualList');
+            const totalNonMutualDiv = document.getElementById('totalNonMutual');
+            totalNonMutualDiv.classList.add('total-non-mutual');
+            totalNonMutualDiv.style.display = 'none';
+
+            progressContainer.style.display = 'block';
+            results.style.display = 'none';
+            list.innerHTML = '';
+            progressBar.value = 0;
+
+            const formData = new FormData(this);
+            const sessionId = formData.get('session_id');
+            const username = formData.get('username');
+            const filterVerified = document.getElementById('filter_verified').checked ? 'true' : 'false';
+            formData.set('filter_verified', filterVerified);
+
+            const source = new EventSource('/process?' + new URLSearchParams(formData).toString());
+            let totalNonMutual = 0;
+            let processedCount = 0;
+            let isDone = false;
+
+            source.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                console.log('SSE data:', data);
+                if (data.status) {
+                    if (data.status === 'uploading_information') {
+                        loading.style.display = 'block';
+                        fetching.style.display = 'none';
+                        getting.style.display = 'none';
+                        printing.style.display = 'none';
+                    } else if (data.status === 'getting_followers') {
+                        fetching.style.display = 'none';
+                        getting.style.display = 'block';
+                        printing.style.display = 'none';
+                        loading.style.display = 'none';
+                    } else if (data.status === 'getting_following') {
+                        getting.style.display = 'none';
+                        fetching.style.display = 'block';
+                        printing.style.display = 'none';
+                        loading.style.display = 'none';
+                    } else if (data.status === 'processing_list') {
+                        printing.style.display = 'block';
+                        fetching.style.display = 'none';
+                        getting.style.display = 'none';
+                        loading.style.display = 'none';
+                    }
+                } else if (data.total && !data.done) {
+                    totalNonMutual = data.total;
+                    progressContainer.style.display = 'block';
+                    fetching.style.display = 'none';
+                    getting.style.display = 'none';
+                    printing.style.display = 'block';
+                    progressBar.max = totalNonMutual;
+                } else if (data.done) {
+                    isDone = true;
+                    source.close();
+                    console.log('Processing complete, total processed:', processedCount);
+                    printing.style.display = 'none';
+                    progressContainer.style.display = 'none';
+                    results.style.display = 'block';
+                    totalNonMutualDiv.textContent = `Total number of people not following you back: ${data.total}`;
+                    totalNonMutualDiv.style.display = 'block';
+                } else if (data.error) {
+                    isDone = false;
+                    const errorDiv = document.createElement('div');
+                    errorDiv.className = 'error';
+                    errorDiv.innerHTML = data.error.replace(/\n/g, '<br>');
+                    list.appendChild(errorDiv);
+                    source.close();
+                    printing.style.display = 'none';
+                    progressContainer.style.display = 'none';
+                    results.style.display = 'block';
+                    submitBtn.disabled = false;
+                } else {
+                    processedCount++;
+                    const item = document.createElement('div');
+                    item.className = 'message';
+                    item.textContent = `${data.index}. ${data.username}`;
+                    list.appendChild(item);
+                    progressBar.value = processedCount;
+                    results.style.display = 'block';
+                }
+            };
+
+            source.onerror = function() {
+                console.error('SSE connection closed, processedCount:', processedCount, 'totalNonMutual:', totalNonMutual, 'isDone:', isDone);
+                source.close();
+                printing.style.display = 'none';
+                progressContainer.style.display = 'none';
+                results.style.display = 'block';
+                if (!isDone && processedCount === 0) {
+                    list.innerHTML += '<div class="error">An error occurred. Ensure a stable network and Instagram access.</div>';
+                } else if (!isDone && processedCount > 0 && processedCount < totalNonMutual) {
+                    totalNonMutualDiv.textContent = `Total number of people not following you back (partial list due to network error): ${processedCount}`;
+                    totalNonMutualDiv.style.display = 'block';
+                } else if (!isDone && processedCount >= totalNonMutual && totalNonMutual > 0) {
+                    totalNonMutualDiv.textContent = `Total number of people not following you back: ${processedCount}`;
+                    totalNonMutualDiv.style.display = 'block';
+                }
+                submitBtn.disabled = false;
+            };
+        });
+    </script>
+</body>
+</html>
