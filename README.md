@@ -12,7 +12,7 @@
    (prevents people from abusing someone else's login)  
 3. Checks how many times **you** have already used the tool in the last 24 hours  
    → Normal limit = **3 runs per 24 hours** per username  
-   → Uses MongoDB to remember usage  
+   → Uses MongoDB to remember usage via tracking usernames 
 4. Fetches your numeric Instagram user ID  
 5. Downloads your **followers** list (paginated API calls)  
 6. Downloads your **following** list (paginated API calls)  
@@ -21,6 +21,10 @@
 9. Streams the list of non-mutual usernames **live** to your browser using Server-Sent Events (SSE)  
    → You see names appearing gradually instead of waiting 30–120 seconds  
 10. Saves the fact that you ran the tool (updates timestamp + counter in MongoDB)
+
+## Visual Preview
+
+![Front Page](assets/frontPage.png)
 
 ## Main Technologies
 
